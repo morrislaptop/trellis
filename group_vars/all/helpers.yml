@@ -11,4 +11,5 @@ site_env: "{{ wordpress_env_defaults | combine(item.value.env | default({}), vau
 site_hosts_canonical: "{{ item.value.site_hosts | map(attribute='canonical') | list }}"
 site_hosts_redirects: "{{ item.value.site_hosts | selectattr('redirects', 'defined') | sum(attribute='redirects', start=[]) | list }}"
 site_hosts: "{{ site_hosts_canonical | union(site_hosts_redirects) }}"
+site_hosts_hashes: "{ {% for site,value in wordpress_sites.iteritems() %}'{{ site }}':'{{ value.site_hosts | string | hash('md5') }}', {% endfor %} }"
 ssl_enabled: "{{ item.value.ssl is defined and item.value.ssl.enabled | default(false) }}"
