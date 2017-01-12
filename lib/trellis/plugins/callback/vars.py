@@ -10,6 +10,7 @@ from ansible.errors import AnsibleError
 from ansible.parsing.dataloader import DataLoader
 from ansible.parsing.yaml.objects import AnsibleMapping, AnsibleSequence, AnsibleUnicode
 from ansible.plugins.callback import CallbackBase
+from ansible.plugins.filter.core import get_encrypted_password
 from ansible.template import Templar
 
 
@@ -85,9 +86,29 @@ class CallbackModule(CallbackBase):
         except:
             return True
 
+    def trellis_users(self, hostvars):
+        trellis_users = {}
+        if 'users' not in hostvars:
+            return trellis_users
+
+        for user in Templar(variables=hostvars, loader=self.loader).template(hostvars['users']):
+            vault_user = {} if 'vault_users' not in hostvars else next((vault_user for vault_user in hostvars['vault_users'] if user['name'] == Templar(variables=hostvars, loader=self.loader).template(vault_user['name'])),{})
+            password = vault_user['password'] if 'password' in vault_user else ''
+            salt = re.sub(r'[^\.\/a-zA-Z0-9]', 'x', vault_user['salt'] if 'salt' in vault_user else '')[:16]
+
+            trellis_users[user['name']] = {
+                'groups': list(set(user['groups'])),
+                'keys': list(set(user['keys'])),
+                'password': ''.join(['{% raw %}', password, '{% endraw %}']) if not password.startswith(('{% raw', '{%raw')) else password,
+                'password_hash': None if password == '' else get_encrypted_password(re.sub(r'({% ?(end)?raw ?%})', '', password), hashtype='sha512', salt=re.sub(r'({% ?(end)?raw ?%})', '', salt))
+                }
+
+        return trellis_users
+
     def v2_playbook_on_play_start(self, play):
         for host in play.get_variable_manager()._inventory.list_hosts(play.hosts[0]):
             hostvars = play.get_variable_manager().get_vars(loader=self.loader, play=play, host=host)
+            host.vars['trellis_users'] = self.trellis_users(hostvars)
             self.raw_vars(play, host, hostvars)
             host.vars['cli_options'] = self.cli_options()
             host.vars['cli_ask_pass'] = getattr(self._options, 'ask_pass', False)

@@ -16,8 +16,7 @@
 - name: Fail if root login will be disabled but admin_user will not be a sudoer
   assert:
     that:
-      - "{% for user in users if user.name == admin_user %}{{ 'sudo' in user.groups }}{% else %}{{ false }}{% endfor %}"
-      - "{% for user in vault_users | default([]) if user.name == admin_user %}{{ user.password is defined }}{% else %}{{ false }}{% endfor %}"
+      - "{% if admin_user in trellis_users %}{{ 'sudo' in trellis_users[admin_user].groups and trellis_users[admin_user].password | length }}{% else %}{{ false }}{% endif %}"
     msg: |
       When `sshd_permit_root_login: false`, you must add `sudo` to the `groups` for admin_user (in `users` hash), and set a password for admin_user in `vault_users` (in `group_vars/{{ env }}/vault.yml`). Otherwise Ansible could lose the ability to run the necessary sudo commands. {% if sudoer_passwords is defined or vault_sudoer_passwords is defined %}
 
@@ -33,7 +32,7 @@
     name: "{{ item.name }}"
     group: "{{ item.groups[0] }}"
     groups: "{{ item.groups | join(',') }}"
-    password: '{% for user in vault_users | default([]) if user.name == item.name and user.password is defined %}{{ user.password | password_hash("sha512", user.salt | default("") | truncate(16, true, "") | regex_replace("[^\.\/a-zA-Z0-9]", "x")) }}{% else %}{{ None }}{% endfor %}'
+    password: "{{ trellis_users[item.name].password_hash }}"
     state: present
     shell: /bin/bash
     update_password: always
