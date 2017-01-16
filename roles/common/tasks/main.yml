@@ -50,7 +50,7 @@
     state: present
     update_cache: true
     cache_valid_time: "{{ apt_cache_valid_time }}"
-  with_items: "{{ install_apt_packages }}"
+  with_items: "{{ apt_packages_install }}"
 
 - name: Validate timezone variable
   stat:
