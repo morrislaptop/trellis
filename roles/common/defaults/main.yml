@@ -5,3 +5,20 @@ ansible_requirements:
     operator: '!='
 
 ntp_timezone: Etc/UTC
+
+default_apt_packages:
+  - python-software-properties
+  - python-lxml
+  - python-pycurl
+  - build-essential
+  - python-mysqldb
+  - curl
+  - git-core
+  - dbus
+  - libnss-myhostname
+  - ghostscript
+  - imagemagick
+  - poppler-utils
+
+custom_apt_packages: []
+install_apt_packages: "{{ default_apt_packages + custom_apt_packages }}"
